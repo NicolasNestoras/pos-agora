@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 
 import com.nikos.retail.cart.*;
 import com.nikos.retail.common.exception.ResourceNotFoundException;
+import com.nikos.retail.inventory.InventoryMovementType;
+import com.nikos.retail.inventory.InventoryService;
 import com.nikos.retail.productvariant.ProductVariant;
 import com.nikos.retail.productvariant.ProductVariantRepository;
 
@@ -13,13 +15,12 @@ import jakarta.transaction.Transactional;
 public class SaleService {
     
     private final SaleRepository saleRepository;
-    private final CartRepository cartRepository;
-    private final ProductVariantRepository productVariantRepository;
+    private final CartRepository cartRepository;    private final InventoryService inventoryService;
 
-    public SaleService(SaleRepository saleRepository, CartRepository cartRepository, ProductVariantRepository productVariantRepository){
+    public SaleService(SaleRepository saleRepository, CartRepository cartRepository, InventoryService inventoryService){
         this.saleRepository = saleRepository;
         this.cartRepository = cartRepository;
-        this.productVariantRepository = productVariantRepository;
+        this.inventoryService = inventoryService;
     }
 
     @Transactional
@@ -38,29 +39,31 @@ public class SaleService {
         sale.setCustomer(cart.getCustomer());
 
         for (CartItem cartItem : cart.getItems()) {
-            ProductVariant variant = cartItem.getProductVariant();
+            ProductVariant productVariant = cartItem.getProductVariant();
 
             // confirm there's enough stock before committing
-            if (variant.getStockQuantity() < cartItem.getQuantity()) {
+            if (productVariant.getStockQuantity() < cartItem.getQuantity()) {
                 throw new IllegalStateException(
-                    "Insufficient stock for SKU " + variant.getSku()
-                    + " (available: " + variant.getStockQuantity()
+                    "Insufficient stock for SKU " + productVariant.getSku()
+                    + " (available: " + productVariant.getStockQuantity()
                     + ", requested: " + cartItem.getQuantity() + ")");
             }
 
             SaleItem saleItem = new SaleItem();
             saleItem.setSale(sale);
-            saleItem.setProductVariant(variant);
+            saleItem.setProductVariant(productVariant);
             saleItem.setQuantity(cartItem.getQuantity());
             saleItem.setUnitPrice(cartItem.getUnitPrice()); // carry over the snapshotted price
             sale.getItems().add(saleItem);
-
-            // deduct stock
-            variant.setStockQuantity(variant.getStockQuantity() - cartItem.getQuantity());
-            productVariantRepository.save(variant);
         }
 
         Sale savedSale = saleRepository.save(sale);
+
+        for (SaleItem saleItem: savedSale.getItems()){
+            // Update Stock
+            inventoryService.recordMovement(saleItem.getProductVariant().getId(), InventoryMovementType.SALE, -saleItem.getQuantity(), savedSale.getId(), "Sale Checkout.");
+
+        }
 
         cart.setStatus(CartStatus.CHECKED_OUT);
         cartRepository.save(cart);

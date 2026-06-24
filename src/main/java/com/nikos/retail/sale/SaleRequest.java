@@ -1,10 +1,10 @@
 package com.nikos.retail.sale;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class SaleRequest {
 
-    @NotBlank
+    @NotNull
     private Long cartId;
 
 

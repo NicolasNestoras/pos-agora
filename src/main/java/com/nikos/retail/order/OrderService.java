@@ -8,6 +8,8 @@ import com.nikos.retail.cart.CartItem;
 import com.nikos.retail.cart.CartRepository;
 import com.nikos.retail.cart.CartStatus;
 import com.nikos.retail.common.exception.ResourceNotFoundException;
+import com.nikos.retail.inventory.InventoryMovementType;
+import com.nikos.retail.inventory.InventoryService;
 import com.nikos.retail.productvariant.ProductVariant;
 import com.nikos.retail.productvariant.ProductVariantRepository;
 
@@ -19,14 +21,14 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
-    private final ProductVariantRepository variantRepository;
+    private final InventoryService inventoryService;
 
     public OrderService(OrderRepository orderRepository,
-                         CartRepository cartRepository,
-                         ProductVariantRepository variantRepository) {
+                         CartRepository cartRepository, 
+                        InventoryService inventoryService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
-        this.variantRepository = variantRepository;
+        this.inventoryService = inventoryService;
     }
 
     @Transactional
@@ -65,11 +67,13 @@ public class OrderService {
             orderItem.setUnitPrice(cartItem.getUnitPrice());
             order.getItems().add(orderItem);
 
-            variant.setStockQuantity(variant.getStockQuantity() - cartItem.getQuantity());
-            variantRepository.save(variant);
         }
 
         Order savedOrder = orderRepository.save(order);
+
+        for (OrderItem orderItem: savedOrder.getItems()){
+            inventoryService.recordMovement(orderItem.getProductVariant().getId(), InventoryMovementType.ORDER, -orderItem.getQuantity(), savedOrder.getId(), "Order checkout.");
+        }
 
         cart.setStatus(CartStatus.CHECKED_OUT);
         cartRepository.save(cart);
