@@ -3,7 +3,6 @@ package com.nikos.retail.customer;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import com.nikos.retail.common.exception.ResourceNotFoundException;
@@ -26,7 +25,7 @@ public class CustomerService {
     }
 
     public CustomerResponse getCustomerById(Long id){
-        Customer customer = customerRepository.findById( id)
+        Customer customer = customerRepository.findById(id)
             .orElseThrow(()->new ResourceNotFoundException("Customer with this id does not exist."));
         return CustomerResponse.fromEntity(customer);
     }
