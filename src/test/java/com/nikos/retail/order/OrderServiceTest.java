@@ -1,8 +1,9 @@
 package com.nikos.retail.order;
 
 import com.nikos.retail.cart.CartRepository;
+import com.nikos.retail.inventory.LocationRepository;
+import com.nikos.retail.inventory.StockAllocationService;
 
-import com.nikos.retail.productvariant.ProductVariantRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,7 +20,8 @@ class OrderServiceTest {
 
     @Mock private OrderRepository orderRepository;
     @Mock private CartRepository cartRepository;
-    @Mock private ProductVariantRepository variantRepository;
+    @Mock private StockAllocationService stockAllocationService;
+    @Mock private LocationRepository locationRepository;
 
     @InjectMocks
     private OrderService orderService;
@@ -45,5 +47,4 @@ class OrderServiceTest {
         assertThrows(IllegalStateException.class,
             () -> orderService.updateStatus(1L, OrderStatus.PAID));
     }
-    
-}   
+}

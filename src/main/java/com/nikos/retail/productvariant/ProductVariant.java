@@ -25,9 +25,6 @@ public class ProductVariant {
     @Column(nullable = false, precision = 10, scale= 2)
     private BigDecimal price;
 
-    @Column(nullable = false)
-    private int stockQuantity;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
@@ -66,14 +63,6 @@ public class ProductVariant {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
-    }
-
-    public int getStockQuantity() {
-        return stockQuantity;
-    }
-
-    public void setStockQuantity(int stockQuantity) {
-        this.stockQuantity = stockQuantity;
     }
 
     public Product getProduct() {

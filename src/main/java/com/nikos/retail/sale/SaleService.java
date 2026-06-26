@@ -4,10 +4,11 @@ import org.springframework.stereotype.Service;
 
 import com.nikos.retail.cart.*;
 import com.nikos.retail.common.exception.ResourceNotFoundException;
-import com.nikos.retail.inventory.InventoryMovementType;
-import com.nikos.retail.inventory.InventoryService;
+import com.nikos.retail.inventory.Location;
+import com.nikos.retail.inventory.LocationRepository;
+import com.nikos.retail.inventory.LocationType;
+import com.nikos.retail.inventory.StockAllocationService;
 import com.nikos.retail.productvariant.ProductVariant;
-import com.nikos.retail.productvariant.ProductVariantRepository;
 
 import jakarta.transaction.Transactional;
 
@@ -15,12 +16,16 @@ import jakarta.transaction.Transactional;
 public class SaleService {
     
     private final SaleRepository saleRepository;
-    private final CartRepository cartRepository;    private final InventoryService inventoryService;
+    private final CartRepository cartRepository;  
+    private final LocationRepository locationRepository;
+    private final StockAllocationService stockAllocationService;
 
-    public SaleService(SaleRepository saleRepository, CartRepository cartRepository, InventoryService inventoryService){
+    public SaleService(SaleRepository saleRepository, CartRepository cartRepository, 
+        LocationRepository locationRepository, StockAllocationService stockAllocationService){
         this.saleRepository = saleRepository;
         this.cartRepository = cartRepository;
-        this.inventoryService = inventoryService;
+        this.locationRepository = locationRepository;
+        this.stockAllocationService = stockAllocationService;
     }
 
     @Transactional
@@ -34,20 +39,17 @@ public class SaleService {
         if (cart.getItems().isEmpty()) {
             throw new IllegalStateException("Cannot checkout an empty cart");
         }
+        
+        Location store = locationRepository.findByType(LocationType.STORE)
+            .stream()
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("No store location is configured"));
 
         Sale sale = new Sale();
         sale.setCustomer(cart.getCustomer());
 
         for (CartItem cartItem : cart.getItems()) {
             ProductVariant productVariant = cartItem.getProductVariant();
-
-            // confirm there's enough stock before committing
-            if (productVariant.getStockQuantity() < cartItem.getQuantity()) {
-                throw new IllegalStateException(
-                    "Insufficient stock for SKU " + productVariant.getSku()
-                    + " (available: " + productVariant.getStockQuantity()
-                    + ", requested: " + cartItem.getQuantity() + ")");
-            }
 
             SaleItem saleItem = new SaleItem();
             saleItem.setSale(sale);
@@ -59,10 +61,11 @@ public class SaleService {
 
         Sale savedSale = saleRepository.save(sale);
 
+
         for (SaleItem saleItem: savedSale.getItems()){
             // Update Stock
-            inventoryService.recordMovement(saleItem.getProductVariant().getId(), InventoryMovementType.SALE, -saleItem.getQuantity(), savedSale.getId(), "Sale Checkout.");
-
+            stockAllocationService.recordSale(saleItem.getProductVariant(), store, 
+            saleItem.getQuantity(), savedSale.getId());
         }
 
         cart.setStatus(CartStatus.CHECKED_OUT);

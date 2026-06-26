@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.nikos.retail.inventory.Location;
 
 import com.nikos.retail.customer.Customer;
 
@@ -19,6 +20,10 @@ public class Sale {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id")
     private Customer customer;
+
+    @ManyToOne(fetch =FetchType.LAZY, optional = false)
+    @JoinColumn(name =  "location_id", nullable= false)
+    private Location location;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -71,6 +76,14 @@ public class Sale {
 
     public void setItems(List<SaleItem> items) {
         this.items = items;
+    }
+
+    public Location getLocation(){
+        return location;
+    }
+
+    public void setLocation(Location location){
+        this.location  = location;  
     }
 
     public BigDecimal getTotal() {

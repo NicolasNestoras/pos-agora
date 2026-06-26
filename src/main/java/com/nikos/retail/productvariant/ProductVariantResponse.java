@@ -16,7 +16,6 @@ public class ProductVariantResponse {
         dto.size = variant.getSize();
         dto.color = variant.getColor();
         dto.price = variant.getPrice();
-        dto.stockQuantity = variant.getStockQuantity();
         return dto;
     }
 
@@ -38,9 +37,5 @@ public class ProductVariantResponse {
 
     public BigDecimal getPrice() {
         return price;
-    }
-
-    public int getStockQuantity() {
-        return stockQuantity;
     }
 }

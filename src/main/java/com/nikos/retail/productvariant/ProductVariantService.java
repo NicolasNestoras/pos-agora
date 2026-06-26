@@ -44,7 +44,6 @@ public class ProductVariantService {
         variant.setSize(request.getSize());
         variant.setColor(request.getColor());
         variant.setPrice(request.getPrice());
-        variant.setStockQuantity(request.getStockQuantity());
         variant.setProduct(product); // links variant to its parent product
 
         ProductVariant saved = productVariantRepository.save(variant);

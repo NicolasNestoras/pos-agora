@@ -8,10 +8,13 @@ import com.nikos.retail.cart.CartItem;
 import com.nikos.retail.cart.CartRepository;
 import com.nikos.retail.cart.CartStatus;
 import com.nikos.retail.common.exception.ResourceNotFoundException;
-import com.nikos.retail.inventory.InventoryMovementType;
-import com.nikos.retail.inventory.InventoryService;
+import com.nikos.retail.customer.CustomerType;
+import com.nikos.retail.inventory.AllocationResult;
+import com.nikos.retail.inventory.Location;
+import com.nikos.retail.inventory.LocationRepository;
+import com.nikos.retail.inventory.LocationType;
+import com.nikos.retail.inventory.StockAllocationService;
 import com.nikos.retail.productvariant.ProductVariant;
-import com.nikos.retail.productvariant.ProductVariantRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,14 +24,19 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
-    private final InventoryService inventoryService;
+    private final StockAllocationService stockAllocationService;
+    private final LocationRepository locationRepository;
+
 
     public OrderService(OrderRepository orderRepository,
-                         CartRepository cartRepository, 
-                        InventoryService inventoryService) {
+                        CartRepository cartRepository, 
+                        StockAllocationService stockAllocationService,
+                        LocationRepository locationRepository) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
-        this.inventoryService = inventoryService;
+        this.stockAllocationService = stockAllocationService;
+        this.locationRepository = locationRepository;
+
     }
 
     @Transactional
@@ -45,6 +53,16 @@ public class OrderService {
         if (cart.getItems().isEmpty()) {
             throw new IllegalStateException("Cannot place an order from an empty cart");
         }
+        // Every Order draws from the warehouse — retail or wholesale,
+        // POS or online. Only a Sale draws from a specific store. See
+        // inventory-design.md section 3.
+        Location warehouse = locationRepository.findByType(LocationType.WAREHOUSE)
+            .stream()
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("No warehouse location is configured"));
+
+        CustomerType customerType = cart.getCustomer().getCustomerType();
+        boolean allowBackorder = customerType == CustomerType.WHOLESALE;
 
         Order order = new Order();
         order.setCustomer(cart.getCustomer());
@@ -52,13 +70,6 @@ public class OrderService {
 
         for (CartItem cartItem : cart.getItems()) {
             ProductVariant variant = cartItem.getProductVariant();
-
-            if (variant.getStockQuantity() < cartItem.getQuantity()) {
-                throw new IllegalStateException(
-                    "Insufficient stock for SKU " + variant.getSku()
-                    + " (available: " + variant.getStockQuantity()
-                    + ", requested: " + cartItem.getQuantity() + ")");
-            }
 
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
@@ -71,8 +82,16 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        for (OrderItem orderItem: savedOrder.getItems()){
-            inventoryService.recordMovement(orderItem.getProductVariant().getId(), InventoryMovementType.ORDER, -orderItem.getQuantity(), savedOrder.getId(), "Order checkout.");
+        for (OrderItem orderItem : savedOrder.getItems()) {
+            ProductVariant productVariant = orderItem.getProductVariant();
+            AllocationResult result = stockAllocationService.allocate(
+                productVariant, warehouse, orderItem.getQuantity(), allowBackorder, savedOrder);
+            // Retail throws inside allocate() on insufficient stock, which
+            // rolls back this entire transaction — Order, OrderItems, and
+            // any reservations already made earlier in this same loop.
+            // Wholesale never throws here; result.backorderedQuantity()
+            // may be > 0 and there's currently no surfacing of that back
+            // to the caller — worth adding to OrderResponse later.
         }
 
         cart.setStatus(CartStatus.CHECKED_OUT);
@@ -80,6 +99,7 @@ public class OrderService {
 
         return OrderResponse.fromEntity(savedOrder);
     }
+
 
     public OrderResponse getOrderById(Long id) {
         Order order = orderRepository.findById(id)
@@ -101,6 +121,12 @@ public class OrderService {
 
         validateStatusTransition(order.getStatus(), newStatus);
         order.setStatus(newStatus);
+        
+        if (newStatus == OrderStatus.SHIPPED) {
+            stockAllocationService.commitReservations(order);
+        } else if (newStatus == OrderStatus.CANCELLED) {
+            stockAllocationService.releaseReservations(order);
+        }
 
         Order saved = orderRepository.save(order);
         return OrderResponse.fromEntity(saved);
@@ -119,4 +145,5 @@ public class OrderService {
                 "Cannot transition order from " + current + " to " + next);
         }
     }
+    
 }

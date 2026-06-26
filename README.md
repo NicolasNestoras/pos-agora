@@ -95,7 +95,9 @@ Every schema change is a versioned, checked-in SQL file under `src/main/resource
 | Sales | `POST /api/sales/checkout?cartId=`, `GET /api/sales/{id}` |
 | Orders | `POST /api/orders`, `GET /api/orders/{id}`, `GET /api/orders/customer/{customerId}`, `PATCH /api/orders/{id}/status` |
 | Payments | `POST /api/payments`, `GET /api/payments/{id}` |
-
+| Locations | `GET/POST /api/locations`, `GET /api/locations/{id}` |
+| Inventory | `GET api/inventory/stock/location/{locationId}`, `GET api/inventory/stock/variant/{variantId}`, `POST api/inventory/stock/stock/adjust`|
+| Stock Transfers | `POST api/inventory/transfers` |
 
 All errors return a consistent shape via a global exception handler:
 ```json
@@ -132,14 +134,15 @@ mvn test
 ```
 
 ## Roadmap
-- [ ] `inventory/` - tracking stock movement
+- [x] `inventory/` - multi-location stock (store/warehouse), reservations, backorders, manual stock adjustments, inter-location transfers
++ [x] Concurrency-safe stock allocation via pessimistic row locking
+- [ ] `inventory/` - manual review workflow for backorder fulfillment on short shipments
 - [ ] Improvement in performance.(Fix the current N+1 Query problem)
 - [ ] `shipment/` — tracking for e-commerce order fulfillment
 - [ ] `user/` + `security/` — JWT authentication, role-based access (cashier vs admin vs customer)
 - [ ] Refund flow for both `Sale` and `Order`
 - [ ] Payment method specified for retail(only cash/card).
 - [ ] Addition of stripe for safe payment handling by card.
-- [ ] Correct the concurrency problem in inventory during transaction failure.
 - [ ] Reporting endpoints (daily sales totals, low-stock alerts)
 - [ ] OpenAPI/Swagger documentation
 - [ ] Dockerized local setup (Postgres + app via docker-compose)
