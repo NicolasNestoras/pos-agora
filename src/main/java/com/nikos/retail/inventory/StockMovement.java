@@ -1,11 +1,9 @@
 package com.nikos.retail.inventory;
 
-import java.time.Instant;
 import java.time.OffsetDateTime;
 
 import com.nikos.retail.productvariant.ProductVariant;
 
-import jakarta.annotation.*;
 import jakarta.persistence.*;
 
 
@@ -20,7 +18,7 @@ public class StockMovement {
     @JoinColumn(name = "product_variant_id", nullable = false)
     private ProductVariant productVariant;
     
-        @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "location_id", nullable = false)
     private Location location;
 

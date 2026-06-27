@@ -154,8 +154,7 @@ When `IncomingStock` arrives, it does **not** automatically fulfill outstanding
 `Backorder`s if the arriving quantity is less than total backordered demand for that
 variant. Auto-fulfilling in arrival order (e.g. oldest backorder first) is an easy
 trap — it silently becomes a FIFO policy without anyone deciding that's what should
-happen, and FIFO may not be what the business wants (e.g. a long-standing
-high-volume wholesale account stuck behind a smaller, more recent order).
+happen, and FIFO may not be what the business wants. In this case, the business wants to manually check and pick the order in which the clients get the items. 
 
 Instead, when received quantity < total pending backorder demand for a variant:
 
