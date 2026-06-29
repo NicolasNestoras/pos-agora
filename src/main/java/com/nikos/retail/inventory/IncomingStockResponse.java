@@ -8,6 +8,7 @@ public class IncomingStockResponse {
     private Long variantId;
     private Long locationId;
     private int expectedQuantity;
+    private Integer receivedQuantity;
     private LocalDate expectedDate;
     private IncomingStockStatus status;
     private OffsetDateTime createdAt;
@@ -20,6 +21,7 @@ public class IncomingStockResponse {
         dto.variantId = incomingStock.getProductVariant().getId();
         dto.locationId = incomingStock.getLocation().getId();
         dto.expectedQuantity = incomingStock.getExpectedQuantity();
+        dto.receivedQuantity = incomingStock.getReceivedQuantity();
         dto.expectedDate = incomingStock.getExpectedDate();
         dto.status = incomingStock.getStatus();
         dto.createdAt = incomingStock.getCreatedAt();
@@ -30,6 +32,7 @@ public class IncomingStockResponse {
     public Long getVariantId(){return variantId;}
     public Long getLocationId(){return locationId;}
     public int getExpectedQuantity(){return expectedQuantity;}
+    public Integer getReceivedQuantity(){return receivedQuantity;}
     public LocalDate getExpectedDate(){return expectedDate;}
     public IncomingStockStatus getStatus(){return status;}
     public OffsetDateTime getCreatedAt(){return createdAt;}

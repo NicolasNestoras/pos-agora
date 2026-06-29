@@ -48,6 +48,7 @@ class IncomingStockServiceTest {
         incomingStock = new IncomingStock();
         incomingStock.setProductVariant(variant);
         incomingStock.setLocation(warehouse);
+        incomingStock.setExpectedQuantity(10); // the original promise
 
         stock = new VariantStock();
         stock.setProductVariant(variant);
@@ -55,8 +56,7 @@ class IncomingStockServiceTest {
     }
 
     @Test
-    void receive_noPendingBackorders_justRestocks() {
-        incomingStock.setExpectedQuantity(10);
+    void receive_restocksByActualQuantity_notExpectedQuantity() {
         stock.setOnHandQuantity(5);
 
         when(incomingStockRepository.findById(1L)).thenReturn(Optional.of(incomingStock));
@@ -64,16 +64,18 @@ class IncomingStockServiceTest {
         when(backorderRepository.sumPendingQuantity(any(), eq(BackorderStatus.PENDING))).thenReturn(0);
         when(incomingStockRepository.save(any(IncomingStock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        IncomingStockResponse response = incomingStockService.receive(1L);
+        ReceiveIncomingStockRequest request = new ReceiveIncomingStockRequest();
+        request.setActualQuantity(7);
+        // Expected 10, supplier shorted to 7.
+        IncomingStockResponse response = incomingStockService.receive(1L, request);
 
-        assertEquals(15, stock.getOnHandQuantity());
-        assertEquals(IncomingStockStatus.RECEIVED, response.getStatus());
-        verify(stockAllocationService, never()).fulfillBackorder(any(), any(), anyInt());
+        assertEquals(12, stock.getOnHandQuantity()); // 5 + 7, not 5 + 10
+        assertEquals(7, response.getReceivedQuantity());
+        assertEquals(10, response.getExpectedQuantity()); // original promise still visible
     }
 
     @Test
-    void receive_fullyCoveringPendingDemand_autoFulfillsBackorders() {
-        incomingStock.setExpectedQuantity(5);
+    void receive_overshipment_stillFulfillsBackordersCorrectly() {
         stock.setOnHandQuantity(0);
 
         Backorder backorder = new Backorder();
@@ -88,22 +90,26 @@ class IncomingStockServiceTest {
             .thenReturn(List.of(backorder));
         when(incomingStockRepository.save(any(IncomingStock.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        incomingStockService.receive(1L);
+        ReceiveIncomingStockRequest request = new ReceiveIncomingStockRequest();
+        request.setActualQuantity(12);
+        // Expected 10, supplier sent 12 by mistake — still covers the 5 backordered.
+        incomingStockService.receive(1L, request);
 
         verify(stockAllocationService).fulfillBackorder(backorder, warehouse, 5);
     }
 
     @Test
     void receive_shortfall_doesNotAutoFulfill() {
-        incomingStock.setExpectedQuantity(3);
         stock.setOnHandQuantity(0);
 
         when(incomingStockRepository.findById(1L)).thenReturn(Optional.of(incomingStock));
         when(variantStockRepository.findForUpdate(any(), any())).thenReturn(Optional.of(stock));
         when(backorderRepository.sumPendingQuantity(any(), eq(BackorderStatus.PENDING))).thenReturn(5);
         when(incomingStockRepository.save(any(IncomingStock.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        incomingStockService.receive(1L);
+        
+        ReceiveIncomingStockRequest request = new ReceiveIncomingStockRequest();
+        request.setActualQuantity(3);
+        incomingStockService.receive(1L, request);
 
         verify(stockAllocationService, never()).fulfillBackorder(any(), any(), anyInt());
     }
@@ -113,6 +119,8 @@ class IncomingStockServiceTest {
         incomingStock.setStatus(IncomingStockStatus.RECEIVED);
         when(incomingStockRepository.findById(1L)).thenReturn(Optional.of(incomingStock));
 
-        assertThrows(IllegalStateException.class, () -> incomingStockService.receive(1L));
+        ReceiveIncomingStockRequest request = new ReceiveIncomingStockRequest();
+        request.setActualQuantity(10);
+        assertThrows(IllegalStateException.class, () -> incomingStockService.receive(1L, request));
     }
 }

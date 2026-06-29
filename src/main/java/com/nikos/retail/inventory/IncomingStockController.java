@@ -1,5 +1,7 @@
 package com.nikos.retail.inventory;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +17,11 @@ public class IncomingStockController {
         this.incomingStockService = incomingStockService;
     }
 
+    @GetMapping
+    public List<IncomingStockResponse> getAll(){
+        return incomingStockService.getIncomingStock();
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public IncomingStockResponse create(@Valid @RequestBody IncomingStockRequest request){
@@ -22,7 +29,9 @@ public class IncomingStockController {
     }
 
     @PostMapping("/{id}/receive")
-    public IncomingStockResponse receive(@PathVariable Long id){
-        return incomingStockService.receive(id);
+    public IncomingStockResponse receive(@PathVariable Long id, @Valid @RequestBody ReceiveIncomingStockRequest request ){
+        return incomingStockService.receive(id, request);
     }
+
+    
 }

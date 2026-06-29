@@ -24,6 +24,7 @@ public class IncomingStock {
     private Location location;
 
     private int expectedQuantity;
+    private Integer receivedQuantity;
 
     private LocalDate expectedDate;
 
@@ -50,6 +51,9 @@ public class IncomingStock {
     public LocalDate getExpectedDate() {return expectedDate;}
     public void setExpectedDate(LocalDate expectedDate){this.expectedDate = expectedDate;}
 
+    public Integer getReceivedQuantity(){return receivedQuantity;}
+    public void setReceivedQuantity(Integer receivedQuantity){this.receivedQuantity = receivedQuantity;}
+    
     public IncomingStockStatus getStatus() {return status;}
     public void setStatus(IncomingStockStatus status) {this.status = status;}
 

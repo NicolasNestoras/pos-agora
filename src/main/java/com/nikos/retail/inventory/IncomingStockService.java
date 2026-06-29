@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class IncomingStockService {
@@ -65,7 +66,7 @@ public class IncomingStockService {
      *   (see BackorderController / inventory-design.md section 6.1).
      */
     @Transactional
-    public IncomingStockResponse receive(Long id) {
+    public IncomingStockResponse receive(Long id,  ReceiveIncomingStockRequest request) {
         IncomingStock incomingStock = incomingStockRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Incoming stock record with this id does not exist."));
 
@@ -75,12 +76,8 @@ public class IncomingStockService {
 
         ProductVariant productVariant = incomingStock.getProductVariant();
         Location location = incomingStock.getLocation();
+        int receivedQuantity = request.getActualQuantity();
 
-        //For now I have made these equal. I will change later, so it is flagged 
-        // if they differ, and the difference is stored.. (if receivedQuantity!=expectedQuantity)
-        // I will need to add a request file, to get the received quantity.
-
-        int receivedQuantity = incomingStock.getExpectedQuantity(); 
 
         VariantStock stock = variantStockRepository
             .findForUpdate(productVariant.getId(), location.getId())
@@ -103,6 +100,7 @@ public class IncomingStockService {
         stockMovementRepository.save(movement);
 
         incomingStock.setStatus(IncomingStockStatus.RECEIVED);
+        incomingStock.setReceivedQuantity(receivedQuantity);
         IncomingStock savedIncomingStock = incomingStockRepository.save(incomingStock);
 
         int pendingDemand = backorderRepository.sumPendingQuantity(productVariant.getId(), BackorderStatus.PENDING);
@@ -122,5 +120,11 @@ public class IncomingStockService {
         return IncomingStockResponse.fromEntity(savedIncomingStock);
     }
 
-    //Add a method to return list of all incomingStock.
+    public List<IncomingStockResponse> getIncomingStock(){
+        return incomingStockRepository.findAll()
+            .stream()
+            .map(IncomingStockResponse::fromEntity)
+            .collect(Collectors.toList());
+    }
+
 }

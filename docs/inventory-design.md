@@ -97,6 +97,7 @@ IncomingStock
   variantId
   locationId
   expectedQuantity
+  receivedQuantity
   expectedDate
   status              (EXPECTED / RECEIVED)
 
@@ -196,6 +197,7 @@ manual step only exists for the genuinely ambiguous case: a shortfall.
 - When received quantity is less than total pending backorder demand, no `Reservation`s are auto-created and the shortfall view returns the correct pending backorders for that variant.
 - Manual fulfillment endpoint correctly partially or fully fulfills a backorder and updates its remaining quantity/status.
 
+
 ## 9. Open Questions for my design
 
 - **Partial allocation on retail rejection:** if a retail order has multiple line items and only one is short, does the whole checkout fail, or just that line? Leaning toward failing the whole checkout for simplicity and clearer customer expectations.
@@ -205,6 +207,8 @@ manual step only exists for the genuinely ambiguous case: a shortfall.
 - **Manual review UI/permissions:** who is allowed to fulfill a shortfall backorder (section 6.1) — any staff member, or a specific role? Out of scope until the `user/`/`security/` roadmap item exists, but worth a one-line TODO so it isn't forgotten.
 
 - **Manufacturing/Imports named in Variants:** right now, a **ProductVariant** imported or manufactured, does not store where it came from. It is good practice to know which variant came from which supplier- this field should be added later.
+
+- **Manufacturing side:** I mentioned before adding an imported/manufactured field in **ProductVariant**, however I think it is best to add the Manufacturing side as a completely new feature, where raw materials, a bill-of-materials, consuming component stock to produce finished-goods stock should be designed. I will add this to the README roadmap for now.
 
 ## 10. Migrations Needed
 
@@ -217,3 +221,4 @@ manual step only exists for the genuinely ambiguous case: a shortfall.
 - `V16__create_stock_transfers.sql`
 - `V17__drop_stock_quantity_from_product_variants.sql`
 - `V18__add_location_to_sales.sql`
+- `V19__add_received_quantity_to_incoming_stock.sql`

@@ -1,0 +1,1 @@
+ALTER TABLE incoming_stock ADD COLUMN received_quantity INTEGER;
