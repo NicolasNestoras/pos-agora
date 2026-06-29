@@ -18,6 +18,7 @@ public class VariantStockService {
     // ORDER_FULFILLED, TRANSFER_IN, and TRANSFER_OUT must only ever be set
     // by the system itself (checkout, transfer flows) — never by a staff
     // member typing a number into a form
+
     private static final Set<StockMovementReason> MANUAL_REASONS =
             Set.of(StockMovementReason.RESTOCK, StockMovementReason.ADJUSTMENT, StockMovementReason.RETURN);
 
@@ -60,7 +61,7 @@ public class VariantStockService {
                 "Reason must be one of " + MANUAL_REASONS);
         }
 
-        ProductVariant variant = productVariantRepository.findById(request.getVariantId())
+        ProductVariant productVariant = productVariantRepository.findById(request.getVariantId())
             .orElseThrow(() -> new ResourceNotFoundException("Product variant with this id does not exist."));
 
         Location location = locationRepository.findById(request.getLocationId())
@@ -68,9 +69,10 @@ public class VariantStockService {
 
         VariantStock stock = variantStockRepository
             .findByProductVariant_IdAndLocation_Id(request.getVariantId(), request.getLocationId())
+            //In case there is no stock defined for a product variant, initialise stock:
             .orElseGet(() -> {
                 VariantStock newStock = new VariantStock();
-                newStock.setProductVariant(variant);
+                newStock.setProductVariant(productVariant);
                 newStock.setLocation(location);
                 return newStock;
             });
@@ -83,7 +85,7 @@ public class VariantStockService {
         VariantStock savedStock = variantStockRepository.save(stock);
 
         StockMovement movement = new StockMovement();
-        movement.setProductVariant(variant);
+        movement.setProductVariant(productVariant);
         movement.setLocation(location);
         movement.setQuantityChange(request.getQuantityChange());
         movement.setReason(request.getReason());

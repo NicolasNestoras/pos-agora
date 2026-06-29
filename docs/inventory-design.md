@@ -196,18 +196,15 @@ manual step only exists for the genuinely ambiguous case: a shortfall.
 - When received quantity is less than total pending backorder demand, no `Reservation`s are auto-created and the shortfall view returns the correct pending backorders for that variant.
 - Manual fulfillment endpoint correctly partially or fully fulfills a backorder and updates its remaining quantity/status.
 
-## 9. Open Questions
+## 9. Open Questions for my design
 
-- **`Sale` needs a `locationId` field.** Currently `Sale` (in `sales/`) has no
-  concept of location. Since allocation now depends on "the location the sale
-  physically occurs at" (section 3), `Sale` needs this column added — populated from
-  whichever `Location` the POS terminal/session is assigned to. With one store today
-  it'll always resolve to the same value, but the field should exist now to avoid a
-  migration + backfill later when a second location opens.
 - **Partial allocation on retail rejection:** if a retail order has multiple line items and only one is short, does the whole checkout fail, or just that line? Leaning toward failing the whole checkout for simplicity and clearer customer expectations.
-- **Reservation expiry:** does a `Reservation` need a TTL/expiry job for orders that stall before payment, similar to typical checkout-hold patterns? Not yet addressed — may not be needed if wholesale orders don't have an abandon-prone checkout session the way ecommerce carts do.
-- **Consistency discipline:** `VariantStock.reservedQuantity`/`onHandQuantity` are cached counters kept in sync with `Reservation`/`StockMovement` inside transactional boundaries. A periodic reconciliation job recomputing these from the ledger would catch drift in production — not built yet, worth doing before this goes live for real.
+
+- **Consistency discipline:** `VariantStock.reservedQuantity`/`onHandQuantity` are cached counters kept in sync with `Reservation`/`StockMovement` inside transactional boundaries. A periodic reconciliation job recomputing these from the ledger would catch drift in production — not built yet, worth doing before this goes live.
+
 - **Manual review UI/permissions:** who is allowed to fulfill a shortfall backorder (section 6.1) — any staff member, or a specific role? Out of scope until the `user/`/`security/` roadmap item exists, but worth a one-line TODO so it isn't forgotten.
+
+- **Manufacturing/Imports named in Variants:** right now, a **ProductVariant** imported or manufactured, does not store where it came from. It is good practice to know which variant came from which supplier- this field should be added later.
 
 ## 10. Migrations Needed
 

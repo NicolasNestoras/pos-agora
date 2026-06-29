@@ -18,4 +18,5 @@ public interface VariantStockRepository extends JpaRepository<VariantStock, Long
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select vs from VariantStock vs where vs.productVariant.id = :variantId and vs.location.id = :locationId")
     Optional<VariantStock> findForUpdate(@Param("variantId") Long variantId, @Param("locationId") Long locationId);
+    
 }

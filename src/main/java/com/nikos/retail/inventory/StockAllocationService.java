@@ -45,6 +45,7 @@ public class StockAllocationService {
 
         int available = stock.getAvailableQuantity();
 
+        //Retail
         if (!allowBackorder) {
             if (requestedQuantity > available) {
                 throw new IllegalStateException(
@@ -145,16 +146,16 @@ public class StockAllocationService {
     }
 
     @Transactional
-    public void recordSale(ProductVariant variant, Location location, int quantity, Long saleId) {
+    public void recordSale(ProductVariant productVariant, Location location, int quantity, Long saleId) {
         VariantStock stock = variantStockRepository
-            .findForUpdate(variant.getId(), location.getId())
+            .findForUpdate(productVariant.getId(), location.getId())
             .orElseThrow(() -> new IllegalStateException(
-                "No stock record exists for SKU " + variant.getSku() + " at " + location.getName()));
+                "No stock record exists for SKU " + productVariant.getSku() + " at " + location.getName()));
 
         int available = stock.getAvailableQuantity();
         if (quantity > available) {
             throw new IllegalStateException(
-                "Insufficient stock for SKU " + variant.getSku()
+                "Insufficient stock for SKU " + productVariant.getSku()
                 + " (available: " + available + ", requested: " + quantity + ")");
         }
 
@@ -162,7 +163,7 @@ public class StockAllocationService {
         variantStockRepository.save(stock);
 
         StockMovement movement = new StockMovement();
-        movement.setProductVariant(variant);
+        movement.setProductVariant(productVariant);
         movement.setLocation(location);
         movement.setQuantityChange(-quantity);
         movement.setReason(StockMovementReason.SALE);
@@ -170,22 +171,26 @@ public class StockAllocationService {
         stockMovementRepository.save(movement);
     }
 
-    private void reserve(VariantStock stock, Location location, ProductVariant variant, Order order, int quantity) {
+
+
+    private void reserve(VariantStock stock, Location location, ProductVariant productVariant, Order order, int quantity) {
         stock.setReservedQuantity(stock.getReservedQuantity() + quantity);
         variantStockRepository.save(stock);
 
         Reservation reservation = new Reservation();
-        reservation.setProductVariant(variant);
+        reservation.setProductVariant(productVariant);
         reservation.setLocation(location);
         reservation.setOrder(order);
         reservation.setQuantity(quantity);
         reservationRepository.save(reservation);
     }
 
+
+
     @Transactional
     public void fulfillBackorder(Backorder backorder, Location location, int quantity){
         if (quantity> backorder.getQuantity()){
-            throw new IllegalStateException(
+            throw new IllegalArgumentException(
                 "Cannot fullfill "+ quantity + " backorder only has "+backorder.getQuantity() + " remaining.");
         }
 
@@ -202,7 +207,7 @@ public class StockAllocationService {
                 + ", requested: " + quantity + ")");
         }
         reserve(stock, location, backorder.getProductVariant(), backorder.getOrder(), quantity);
-        int remaining  = backorder.getQuantity() - quantity;
+        int remaining = backorder.getQuantity() - quantity;
         backorder.setQuantity(remaining);
         if (remaining == 0){
             backorder.setStatus(BackorderStatus.FULFILLED);

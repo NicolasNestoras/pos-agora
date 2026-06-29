@@ -1,6 +1,6 @@
-# Retail POS and Ecommerce
+# Retail POS, Ecommerce and Inventory Management System
 
-A backend system for a unified retail platform — designed to power an in-person POS (point of sale) system and a future e-commerce storefront from a single, shared domain model.
+A backend system for a unified retail platform — designed to power an in-person POS (point of sale) system and a future e-commerce storefront from a single, shared domain model; with an Inventory management system to serve the Store/Warehouse/Ecommerce for both Retail and Wholesale clients.
 
 Built with Spring Boot, PostgreSQL, and Flyway-managed schema migrations.
 
@@ -135,8 +135,9 @@ mvn test
 
 ## Roadmap
 - [x] `inventory/` - multi-location stock (store/warehouse), reservations, backorders, manual stock adjustments, inter-location transfers
-+ [x] Concurrency-safe stock allocation via pessimistic row locking
+- [x] Concurrency-safe stock allocation via pessimistic row locking
 - [ ] `inventory/` - manual review workflow for backorder fulfillment on short shipments
+- [ ] Replace IllegalState/IllegalArgumentExceptions with custom ones.
 - [ ] Improvement in performance.(Fix the current N+1 Query problem)
 - [ ] `shipment/` — tracking for e-commerce order fulfillment
 - [ ] `user/` + `security/` — JWT authentication, role-based access (cashier vs admin vs customer)

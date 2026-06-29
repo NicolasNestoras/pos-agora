@@ -34,7 +34,7 @@ public class StockTransferService {
             throw new IllegalArgumentException("Source and destination locations must be different.");
         }
 
-        ProductVariant variant = productVariantRepository.findById(request.getVariantId())
+        ProductVariant productVariant = productVariantRepository.findById(request.getVariantId())
             .orElseThrow(() -> new ResourceNotFoundException("Product variant with this id does not exist."));
 
         Location fromLocation = locationRepository.findById(request.getFromLocationId())
@@ -44,9 +44,9 @@ public class StockTransferService {
             .orElseThrow(() -> new ResourceNotFoundException("Destination location with this id does not exist."));
 
         VariantStock sourceStock = variantStockRepository
-            .findForUpdate(variant.getId(), fromLocation.getId())
+            .findForUpdate(productVariant.getId(), fromLocation.getId())
             .orElseThrow(() -> new IllegalStateException(
-                "No stock record exists for SKU " + variant.getSku() + " at " + fromLocation.getName()));
+                "No stock record exists for SKU " + productVariant.getSku() + " at " + fromLocation.getName()));
 
         // Checked against availableQuantity, not onHandQuantity — this is
         // what stops staff from accidentally transferring away stock
@@ -59,7 +59,7 @@ public class StockTransferService {
         }
 
         StockTransfer transfer = new StockTransfer();
-        transfer.setProductVariant(variant);
+        transfer.setProductVariant(productVariant);
         transfer.setFromLocation(fromLocation);
         transfer.setToLocation(toLocation);
         transfer.setQuantity(request.getQuantity());
@@ -69,27 +69,27 @@ public class StockTransferService {
         variantStockRepository.save(sourceStock);
 
         StockMovement outMovement = new StockMovement();
-        outMovement.setProductVariant(variant);
+        outMovement.setProductVariant(productVariant);
         outMovement.setLocation(fromLocation);
         outMovement.setQuantityChange(-request.getQuantity());
         outMovement.setReason(StockMovementReason.TRANSFER_OUT);
         outMovement.setReferenceId(savedTransfer.getId());
         stockMovementRepository.save(outMovement);
 
-        VariantStock destStock = variantStockRepository
-            .findForUpdate(variant.getId(), toLocation.getId())
+        VariantStock destinationStock = variantStockRepository
+            .findForUpdate(productVariant.getId(), toLocation.getId())
             .orElseGet(() -> {
                 VariantStock newStock = new VariantStock();
-                newStock.setProductVariant(variant);
+                newStock.setProductVariant(productVariant);
                 newStock.setLocation(toLocation);
                 return newStock;
             });
 
-        destStock.setOnHandQuantity(destStock.getOnHandQuantity() + request.getQuantity());
-        variantStockRepository.save(destStock);
+        destinationStock.setOnHandQuantity(destinationStock.getOnHandQuantity() + request.getQuantity());
+        variantStockRepository.save(destinationStock);
 
         StockMovement inMovement = new StockMovement();
-        inMovement.setProductVariant(variant);
+        inMovement.setProductVariant(productVariant);
         inMovement.setLocation(toLocation);
         inMovement.setQuantityChange(request.getQuantity());
         inMovement.setReason(StockMovementReason.TRANSFER_IN);

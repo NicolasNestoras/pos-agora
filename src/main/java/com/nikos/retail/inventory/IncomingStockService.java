@@ -38,18 +38,19 @@ public class IncomingStockService {
 
     @Transactional
     public IncomingStockResponse create(IncomingStockRequest request) {
-        ProductVariant variant = productVariantRepository.findById(request.getVariantId())
+        ProductVariant productVariant = productVariantRepository.findById(request.getVariantId())
             .orElseThrow(() -> new ResourceNotFoundException("Product variant with this id does not exist."));
         Location location = locationRepository.findById(request.getLocationId())
             .orElseThrow(() -> new ResourceNotFoundException("Location with this id does not exist."));
 
         IncomingStock incomingStock = new IncomingStock();
-        incomingStock.setProductVariant(variant);
+        incomingStock.setProductVariant(productVariant);
         incomingStock.setLocation(location);
         incomingStock.setExpectedQuantity(request.getExpectedQuantity());
         incomingStock.setExpectedDate(request.getExpectedDate());
 
-        return IncomingStockResponse.fromEntity(incomingStockRepository.save(incomingStock));
+        IncomingStock savedIncomingStock = incomingStockRepository.save(incomingStock);
+        return IncomingStockResponse.fromEntity(savedIncomingStock);
     }
 
     /**
@@ -72,15 +73,20 @@ public class IncomingStockService {
             throw new IllegalStateException("This incoming stock has already been received.");
         }
 
-        ProductVariant variant = incomingStock.getProductVariant();
+        ProductVariant productVariant = incomingStock.getProductVariant();
         Location location = incomingStock.getLocation();
-        int receivedQuantity = incomingStock.getExpectedQuantity();
+
+        //For now I have made these equal. I will change later, so it is flagged 
+        // if they differ, and the difference is stored.. (if receivedQuantity!=expectedQuantity)
+        // I will need to add a request file, to get the received quantity.
+
+        int receivedQuantity = incomingStock.getExpectedQuantity(); 
 
         VariantStock stock = variantStockRepository
-            .findForUpdate(variant.getId(), location.getId())
+            .findForUpdate(productVariant.getId(), location.getId())
             .orElseGet(() -> {
                 VariantStock newStock = new VariantStock();
-                newStock.setProductVariant(variant);
+                newStock.setProductVariant(productVariant);
                 newStock.setLocation(location);
                 return newStock;
             });
@@ -89,7 +95,7 @@ public class IncomingStockService {
         variantStockRepository.save(stock);
 
         StockMovement movement = new StockMovement();
-        movement.setProductVariant(variant);
+        movement.setProductVariant(productVariant);
         movement.setLocation(location);
         movement.setQuantityChange(receivedQuantity);
         movement.setReason(StockMovementReason.RESTOCK);
@@ -99,19 +105,22 @@ public class IncomingStockService {
         incomingStock.setStatus(IncomingStockStatus.RECEIVED);
         IncomingStock savedIncomingStock = incomingStockRepository.save(incomingStock);
 
-        int pendingDemand = backorderRepository.sumPendingQuantity(variant.getId(), BackorderStatus.PENDING);
+        int pendingDemand = backorderRepository.sumPendingQuantity(productVariant.getId(), BackorderStatus.PENDING);
 
         if (pendingDemand > 0 && receivedQuantity >= pendingDemand) {
             List<Backorder> pendingBackorders = backorderRepository
-                .findByProductVariant_IdAndStatusOrderByCreatedAtAsc(variant.getId(), BackorderStatus.PENDING);
+                .findByProductVariant_IdAndStatusOrderByCreatedAtAsc(productVariant.getId(), BackorderStatus.PENDING);
 
             for (Backorder backorder : pendingBackorders) {
                 stockAllocationService.fulfillBackorder(backorder, location, backorder.getQuantity());
             }
         }
+
         // pendingDemand > receivedQuantity: a genuine shortfall — leave
         // everything PENDING for manual review, on purpose.
 
         return IncomingStockResponse.fromEntity(savedIncomingStock);
     }
+
+    //Add a method to return list of all incomingStock.
 }
