@@ -222,3 +222,56 @@ manual step only exists for the genuinely ambiguous case: a shortfall.
 - `V17__drop_stock_quantity_from_product_variants.sql`
 - `V18__add_location_to_sales.sql`
 - `V19__add_received_quantity_to_incoming_stock.sql`
+## 11. Limitations
+
+This section lists known gaps in the current implementation — things deliberately
+deferred under time constraints, not things believed to be correct that turned out
+not to be.
+
+- **No reservation expiry / TTL.** A `Reservation` created at checkout never
+  automatically releases if an order stalls before payment. Typical ecommerce
+  checkout flows expire a hold after ~10–15 minutes; this system has no equivalent
+  job. In practice this matters less here than in a typical storefront, since
+  wholesale orders aren't an abandon-prone browser checkout session — but it's a
+  real gap for retail ecommerce orders specifically- so it should be updated in the future.
+
+- **No stock reconciliation job.** `VariantStock.onHandQuantity`/`reservedQuantity`
+  are cached counters kept in sync with `StockMovement`/`Reservation` inside
+  transactional boundaries. If a bug or manual DB edit ever desyncs them, nothing
+  currently detects or repairs the drift. A periodic job recomputing the cached
+  values from the ledger and flagging discrepancies would close this gap.
+
+- **No per-variant low-stock threshold.** The RabbitMQ low-stock alert uses one
+  global threshold (5 units) across every variant, rather than a configurable
+  reorder point per product. Fine for demonstrating the pattern; not realistic for
+  production, where a slow-moving and a fast-moving SKU need very different
+  thresholds. I will need to figure out meaningful thresholds for each product variant.
+
+- **No dead-letter queue on the low-stock listener.** Spring AMQP's default
+  acknowledgment mode requeues a message on consumer failure. If the listener
+  throws on every attempt for a given message (a bug, not a transient issue), it
+  will redeliver indefinitely rather than being routed aside after N attempts.
+
+- **Manufactured stock is not yet modeled.** Only supplier-sourced `IncomingStock`
+  exists. A production/manufacturing source of stock — with its own planning
+  lifecycle and yield-vs-plan tracking — was scoped but not built (see roadmap).
+
+- **No `GenerationType.SEQUENCE` for inventory entities.** All inventory tables
+  still use `IDENTITY`, which blocks JDBC batch inserts. Considered for the
+  high-write-volume ledger tables (`stock_movements`, `reservations`) but not
+  implemented; purely a performance optimization, no functional impact.
+
+- **`Sale`'s location resolution assumes a single store.** `SaleService` looks up
+  "the" store via `findByType(LocationType.WAREHOUSE).stream().findFirst()`. This
+  works correctly today because exactly one store exists, but it's not a real
+  multi-store routing rule — once a second store opens, this needs to resolve from
+  the POS terminal/session instead of a type lookup (see section 3).
+
+- **Retail order rejection is all-or-nothing.** If any line item in a retail order
+  lacks sufficient stock, the entire checkout transaction rolls back — no partial
+  fulfillment of the items that were available. Simpler and arguably better UX
+  (avoids a confusing partial shipment), but it is a deliberate choice for now, rather than an oversight.
+
+- **No tests for `StockTransferService`.** Unlike every other service in this
+  feature, the manual stock-transfer flow currently has no unit test coverage —
+  flagged here rather than silently absent.

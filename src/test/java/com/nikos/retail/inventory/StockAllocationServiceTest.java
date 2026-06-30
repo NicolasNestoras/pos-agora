@@ -24,9 +24,11 @@ class StockAllocationServiceTest {
     @Mock private ReservationRepository reservationRepository;
     @Mock private BackorderRepository backorderRepository;
     @Mock private StockMovementRepository stockMovementRepository;
+    @Mock private LowStockEventPublisher lowStockEventPublisher;
 
     @InjectMocks
     private StockAllocationService stockAllocationService;
+
 
     private ProductVariant productVariant;
     private Location warehouse;

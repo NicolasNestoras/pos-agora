@@ -15,17 +15,20 @@ public class StockTransferService {
     private final StockMovementRepository stockMovementRepository;
     private final ProductVariantRepository productVariantRepository;
     private final LocationRepository locationRepository;
+    private final LowStockEventPublisher lowStockEventPublisher;
 
     public StockTransferService(StockTransferRepository stockTransferRepository,
                                  VariantStockRepository variantStockRepository,
                                  StockMovementRepository stockMovementRepository,
                                  ProductVariantRepository productVariantRepository,
-                                 LocationRepository locationRepository){
+                                 LocationRepository locationRepository,
+                                LowStockEventPublisher lowStockEventPublisher){
         this.stockTransferRepository = stockTransferRepository;
         this.variantStockRepository = variantStockRepository;
         this.stockMovementRepository = stockMovementRepository;
         this.productVariantRepository = productVariantRepository;
         this.locationRepository = locationRepository;
+        this.lowStockEventPublisher=lowStockEventPublisher;
     }
 
     @Transactional
@@ -67,7 +70,8 @@ public class StockTransferService {
 
         sourceStock.setOnHandQuantity(sourceStock.getOnHandQuantity() - request.getQuantity());
         variantStockRepository.save(sourceStock);
-
+        lowStockEventPublisher.checkAndPublish(sourceStock);
+        
         StockMovement outMovement = new StockMovement();
         outMovement.setProductVariant(productVariant);
         outMovement.setLocation(fromLocation);

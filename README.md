@@ -14,6 +14,8 @@ This project was built as a hands-on way to learn backend engineering properly �
 
 - **Java 21**
 - **Spring Boot 3.3.5** — Web, Data JPA, Validation, Security
+- **RabbitMQ** — asynchronous low-stock alerting via Spring AMQP
+- **JWT (jjwt)** — stateless authentication, role-based authorization
 - **PostgreSQL** — primary datastore
 - **Flyway 10.20.1** — versioned, repeatable schema migrations
 - **Maven** — dependency management and build lifecycle
@@ -136,11 +138,17 @@ mvn test
 ## Roadmap
 - [x] `inventory/` - multi-location stock (store/warehouse), reservations, backorders, manual stock adjustments, inter-location transfers
 - [x] Concurrency-safe stock allocation via pessimistic row locking
-- [ ] `inventory/` - manual review workflow for backorder fulfillment on short shipments
+- [x] `inventory/` - manual review workflow for backorder fulfillment on short shipments
+- [ ] `inventory/` - manufactured stock (production runs as a second stock source, alongside supplier incoming stock)
+- [ ] `inventory/` - reservation expiry/TTL for stalled orders
+- [ ] `inventory/` - stock reconciliation job (detect drift between cached counters and the movement ledger)
+- [ ] `inventory/` - per-variant configurable low-stock threshold
+- [ ] `inventory/` - switch high-write-volume ledger tables to GenerationType.SEQUENCE for batch insert support
 - [ ] Replace IllegalState/IllegalArgumentExceptions with custom ones.
 - [ ] Improvement in performance.(Fix the current N+1 Query problem)
 - [ ] `shipment/` — tracking for e-commerce order fulfillment
-- [ ] `user/` + `security/` — JWT authentication, role-based access (cashier vs admin vs customer)
+- [ ] `user/` + `security/` — JWT authentication, role-based access (Admin/Manager/Staff/Customer)
+- [ ] `user/` — refresh tokens, password reset flow, admin-facing user creation endpoint
 - [ ] Refund flow for both `Sale` and `Order`
 - [ ] Payment method specified for retail(only cash/card).
 - [ ] Addition of stripe for safe payment handling by card.
@@ -158,3 +166,22 @@ mvn test
 - Defense-in-depth validation (application-level checks backed by database constraints)
 - Versioned, reproducible database schema via Flyway
 - Unit-tested business logic, isolated from infrastructure via mocking
+
+## Known limitations
+
+This project was built under a real time constraint, and some gaps are deliberate
+rather than accidental. Full detail on inventory-specific limitations lives in
+`docs/inventory-design.md` (section 11); the cross-cutting ones are listed here.
+
+- **JWT auth has no refresh tokens, password reset, or user-creation endpoint.**
+  Only the seeded admin account exists; there's currently no way to create
+  Staff/Manager accounts except by inserting directly into the database.
+- **No dead-letter queue on the RabbitMQ low-stock consumer** — see
+  `inventory-design.md` for the failure mode this leaves open.
+- **No per-variant low-stock threshold** — one global value today.
+- **Manufactured stock is not yet modeled** — only supplier-sourced incoming stock.
+- **No stock reconciliation job** for the cached on-hand/reserved counters.
+- **Development environment currently requires `-Dnet.bytebuddy.experimental=true`
+  when running tests on JDK versions newer than what Mockito's bundled Byte Buddy
+  officially supports** — a real JDK 21 toolchain pin is the correct long-term fix,
+  not yet done.

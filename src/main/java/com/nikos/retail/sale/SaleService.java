@@ -47,6 +47,7 @@ public class SaleService {
 
         Sale sale = new Sale();
         sale.setCustomer(cart.getCustomer());
+        sale.setLocation(store);
 
         for (CartItem cartItem : cart.getItems()) {
             ProductVariant productVariant = cartItem.getProductVariant();

@@ -15,15 +15,18 @@ public class StockAllocationService {
     private final ReservationRepository reservationRepository;
     private final BackorderRepository backorderRepository;
     private final StockMovementRepository stockMovementRepository;
+    private final LowStockEventPublisher lowStockEventPublisher;
 
     public StockAllocationService(VariantStockRepository variantStockRepository,
                                    ReservationRepository reservationRepository,
                                    BackorderRepository backorderRepository,
-                                   StockMovementRepository stockMovementRepository) {
+                                   StockMovementRepository stockMovementRepository,
+                                LowStockEventPublisher lowStockEventPublisher) {
         this.variantStockRepository = variantStockRepository;
         this.reservationRepository = reservationRepository;
         this.backorderRepository = backorderRepository;
         this.stockMovementRepository = stockMovementRepository;
+        this.lowStockEventPublisher = lowStockEventPublisher;
     }
 
     /**
@@ -161,6 +164,7 @@ public class StockAllocationService {
 
         stock.setOnHandQuantity(stock.getOnHandQuantity() - quantity);
         variantStockRepository.save(stock);
+        lowStockEventPublisher.checkAndPublish(stock); //publish Low Stock event
 
         StockMovement movement = new StockMovement();
         movement.setProductVariant(productVariant);
@@ -176,6 +180,7 @@ public class StockAllocationService {
     private void reserve(VariantStock stock, Location location, ProductVariant productVariant, Order order, int quantity) {
         stock.setReservedQuantity(stock.getReservedQuantity() + quantity);
         variantStockRepository.save(stock);
+        lowStockEventPublisher.checkAndPublish(stock); //Publish low stock event
 
         Reservation reservation = new Reservation();
         reservation.setProductVariant(productVariant);
