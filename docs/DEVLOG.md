@@ -1,0 +1,7 @@
+## 02-07-2026
+I have been working for 3 days on the design, additions/modifications for the pos feature. It is quite complex(especially the refund logic) and I will need to check it again for possible mistakes and bugs. I will not commit it yet, I will instead leave it as it is for now, and come back to it later. I want to add a simple JWT authentication tomorrow, with only one user-ADMIN, so that I can submit this project to my CV. I will continue making additions/modification after that.
+
+## 01-07-2026
+I realised that there are crucial parts of such a design I originally missed, and I need to complete, before continuing with the Shipment/User/Security features- before adding proper message queueing(low_stock notifications, receipts sent by email etc.), the design must be complete.
+I will take the next few days to correct certain problems I had originally left open for a later review, including the Payment feature, which is missing a check that the amount paid matches the amount of the order/sale. 
+This is one example, there are still many similar problems and missing parts. The feature I will work on now is the POS-design, which as of yet is only for wholesale customers. I will need to modify existing files, add new ones, and correct mistakes. This is all outlined in my **pos-design.md**.
